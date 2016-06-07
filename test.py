@@ -2,6 +2,7 @@
 from ev3dev.auto import LargeMotor, Led, ColorSensor, UltrasonicSensor
 import time
 import signal
+import math
 
 motor_a = LargeMotor('outA')
 motor_b = LargeMotor('outB')
@@ -18,13 +19,19 @@ motor_d.stop_action = 'brake'
 color_sensor = ColorSensor()
 color_sensor.mode = 'COL-REFLECT'
 
+sonar_sensor = UltrasonicSensor()
+sonar_sensor.mode = 'US-DIST-CM'
+
 lights = Led()
 Led.delay_on = 500
 Led.delay_off = 1500
 lights.trigger = 'none'
 
 time_since_escline = 0
+
 is_esc_line = False
+is_searching = False
+
 
 print('ready')
 lights.trigger = 'timer'
@@ -43,6 +50,13 @@ def go_back():
     motor_b.run_forever(duty_cycle_sp=-75)
     motor_c.run_forever(duty_cycle_sp=-75)
     motor_d.run_forever(duty_cycle_sp=-75)
+
+
+def turn_right():
+    motor_a.run_forever(duty_cycle_sp=75)
+    motor_b.run_forever(duty_cycle_sp=-75)
+    motor_c.run_forever(duty_cycle_sp=-75)
+    motor_d.run_forever(duty_cycle_sp=75)
 
 
 def stop():
@@ -89,21 +103,30 @@ def esc_line():
 
 def proc_esc_line():
     global is_esc_line
+    global is_searching
     if time.time()-time_since_escline > 1:
         print('time is done')
         is_esc_line = False
+        is_searching = True
         return
     else:
         go_back()
 
+
+def proc_search():
+    global is_searching
+    turn_right()
+    if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) < 15:
+        is_searching = False
 signal.signal(signal.SIGINT, handler)
 
 
 def main():
     while(True):
-        print(is_esc_line)
         if is_esc_line is True:
             proc_esc_line()
+        elif is_searching is True:
+            proc_search()
         else:
             go_forwards()
         print(color_sensor.value())
@@ -111,7 +134,7 @@ def main():
             if(color_sensor.value() > 40):
                 esc_line()
                 print('esc line called')
-        time.sleep(.01)
+        time.sleep(.001)
 
 
 if __name__ == "__main__":
