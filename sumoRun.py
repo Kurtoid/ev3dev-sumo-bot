@@ -4,6 +4,51 @@ import time
 import signal
 import math
 
+import array
+import fcntl
+import sys
+
+# from linux/input.h
+
+KEY_UP = 103
+KEY_DOWN = 108
+KEY_LEFT = 105
+KEY_RIGHT = 106
+KEY_ENTER = 28
+KEY_BACKSPACE = 14
+
+KEY_MAX = 0x2ff
+
+
+def EVIOCGKEY(length):
+    return 2 << (14+8+8) | length << (8+8) | ord('E') << 8 | 0x18
+
+# end of stuff from linux/input.h
+
+BUF_LEN = int((KEY_MAX + 7) / 8)
+
+
+def test_bit(bit, bytes):
+    # bit in bytes is 1 when released and 0 when pressed
+    return not bool(bytes[int(bit / 8)] & (1 << (bit % 8))) 
+
+
+def is_enter_pressed():
+    buf = array.array('B', [0] * BUF_LEN)
+    with open('/dev/input/by-path/platform-gpio-keys.0-event', 'r') as fd:
+        ret = fcntl.ioctl(fd, EVIOCGKEY(len(buf)), buf)
+
+    if ret < 0:
+        print("ioctl error", ret)
+        sys.exit(1)
+
+    #for key in ['UP', 'DOWN', 'LEFT', 'RIGHT', 'ENTER', 'BACKSPACE']:
+    #    key_code = globals()['KEY_' + key]
+    #    key_state = test_bit(key_code, buf) and "pressed" or "released"
+    #    print('%9s : %s' % (key, key_state))
+    return test_bit(globals()['KEY_ENTER'], buf)
+
+
 motor_a = LargeMotor('outA')
 motor_b = LargeMotor('outB')
 motor_c = LargeMotor('outC')
@@ -35,8 +80,9 @@ is_searching = False
 
 print('ready')
 lights.trigger = 'timer'
-input("Press enter to go!")
-
+#input("Press enter to go!")
+while not is_enter_pressed():
+    pass
 
 def go_forwards():
     MOTOR_POWER=100
@@ -124,13 +170,14 @@ signal.signal(signal.SIGINT, handler)
 
 def main():
     while(True):
+        #print(is_enter_pressed())
         if is_esc_line is True:
             proc_esc_line()
         elif is_searching is True:
             proc_search()
         else:
             go_forwards()
-        print(color_sensor.value())
+        #print(color_sensor.value())
         if is_esc_line is not True:
             if(color_sensor.value() > 40):
                 esc_line()
