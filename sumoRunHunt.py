@@ -30,7 +30,7 @@ BUF_LEN = int((KEY_MAX + 7) / 8)
 
 def test_bit(bit, bytes):
     # bit in bytes is 1 when released and 0 when pressed
-    return not bool(bytes[int(bit / 8)] & (1 << (bit % 8))) 
+    return not bool(bytes[int(bit / 8)] & (1 << (bit % 8)))
 
 
 def is_enter_pressed():
@@ -42,7 +42,7 @@ def is_enter_pressed():
         print("ioctl error", ret)
         sys.exit(1)
 
-    #for key in ['UP', 'DOWN', 'LEFT', 'RIGHT', 'ENTER', 'BACKSPACE']:
+    # for key in ['UP', 'DOWN', 'LEFT', 'RIGHT', 'ENTER', 'BACKSPACE']:
     #    key_code = globals()['KEY_' + key]
     #    key_state = test_bit(key_code, buf) and "pressed" or "released"
     #    print('%9s : %s' % (key, key_state))
@@ -61,7 +61,7 @@ motor_b.stop_action = 'brake'
 motor_c.stop_action = 'brake'
 motor_d.stop_action = 'brake'
 
-color_sensor = ColorSensor()
+color_sensor = ColorSensor('in3')
 color_sensor.mode = 'COL-REFLECT'
 
 sonar_sensor = UltrasonicSensor()
@@ -73,19 +73,23 @@ Led.delay_off = 1500
 lights.trigger = 'none'
 
 time_since_escline = 0
+time_since_turn = 0
 
 is_esc_line = False
-is_searching = False
+is_searching = True
+lost_target = False
+enemy_likes_to_go = 0 # 0 is center, 1 is right, -1 is left
 
 
 print('ready')
 lights.trigger = 'timer'
-#input("Press enter to go!")
+# input("Press enter to go!")
 while not is_enter_pressed():
     pass
 
+
 def go_forwards():
-    MOTOR_POWER=100
+    MOTOR_POWER = 100
     motor_a.run_forever(duty_cycle_sp=MOTOR_POWER)
     motor_b.run_forever(duty_cycle_sp=MOTOR_POWER)
     motor_c.run_forever(duty_cycle_sp=MOTOR_POWER)
@@ -95,8 +99,8 @@ def go_forwards():
 def tank_drive(left, right):
     motor_a.run_forever(duty_cycle_sp=right)
     motor_b.run_forever(duty_cycle_sp=left)
-    motor_c.run_forever(duty_cycle_sp=right)
-    motor_d.run_forever(duty_cycle_sp=left)
+    motor_c.run_forever(duty_cycle_sp=left)
+    motor_d.run_forever(duty_cycle_sp=right)
 
 
 def go_back():
@@ -175,16 +179,78 @@ def proc_search():
 signal.signal(signal.SIGINT, handler)
 
 
+def proc_charge():
+    global lost_target
+    global time_since_turn
+    go_forwards()
+    if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) > 30:
+        lost_target = True
+        time_since_turn = time.time()
+
+
+def proc_lost_target():
+    global lost_target
+    global enemy_likes_to_go
+    global is_searching
+    if(enemy_likes_to_go==1):
+        if(time.time() - time_since_turn) < 1:
+            tank_drive(75, -75)
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+                lost_target = False
+                enemy_likes_to_go = 1
+        elif(time.time() - time_since_turn) < 3:
+            tank_drive(-75, 75)
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+                lost_target = False
+                enemy_likes_to_go=-1
+        else:
+            lost_target = False
+            enemy_likes_to_go = 0
+            is_searching = True
+    elif(enemy_likes_to_go==-1):
+        if(time.time() - time_since_turn) < 1:
+            tank_drive(-75, 75)
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+                lost_target = False
+                enemy_likes_to_go = -1
+        elif(time.time() - time_since_turn) < 3:
+            tank_drive(75, -75)
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+                lost_target = False
+                enemy_likes_to_go=1
+        else:
+            lost_target = False
+            enemy_likes_to_go = 0
+            is_searching = True
+    else:
+        if(time.time() - time_since_turn) < 1:
+            tank_drive(75, -75)
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+                lost_target = False
+                enemy_likes_to_go = 1
+        elif(time.time() - time_since_turn) < 3:
+            tank_drive(-75, 75)
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+                lost_target = False
+                enemy_likes_to_go=-1
+        else:
+            lost_target = False
+            enemy_likes_to_go = 0
+            is_searching = True
+
+
 def main():
     while(True):
-        #print(is_enter_pressed())
+        # print(is_enter_pressed())
         if is_esc_line is True:
             proc_esc_line()
         elif is_searching is True:
             proc_search()
+        elif lost_target is True:
+            proc_lost_target()
         else:
-            go_forwards()
-        #print(color_sensor.value())
+            proc_charge()
+        # print(color_sensor.value())
         if is_esc_line is not True:
             if(color_sensor.value() > 40):
                 esc_line()
