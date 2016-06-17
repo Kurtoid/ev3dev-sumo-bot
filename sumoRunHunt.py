@@ -21,7 +21,7 @@ KEY_MAX = 0x2ff
 
 
 def EVIOCGKEY(length):
-    return 2 << (14+8+8) | length << (8+8) | ord('E') << 8 | 0x18
+    return 2 << (14 + 8 + 8) | length << (8 + 8) | ord('E') << 8 | 0x18
 
 # end of stuff from linux/input.h
 
@@ -78,7 +78,7 @@ time_since_turn = 0
 is_esc_line = False
 is_searching = True
 lost_target = False
-enemy_likes_to_go = 0 # 0 is center, 1 is right, -1 is left
+enemy_likes_to_go = 0  # 0 is center, 1 is right, -1 is left
 
 
 print('ready')
@@ -162,7 +162,7 @@ def esc_line():
 def proc_esc_line():
     global is_esc_line
     global is_searching
-    if time.time()-time_since_escline > 1:
+    if time.time() - time_since_escline > 1:
         print('time is done')
         is_esc_line = False
         is_searching = True
@@ -170,11 +170,13 @@ def proc_esc_line():
     else:
         go_back()
 
+SEARCH_DIST = 50
+
 
 def proc_search():
     global is_searching
     turn_right()
-    if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) < 25:
+    if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) < SEARCH_DIST:
         is_searching = False
 signal.signal(signal.SIGINT, handler)
 
@@ -183,7 +185,7 @@ def proc_charge():
     global lost_target
     global time_since_turn
     go_forwards()
-    if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) > 30:
+    if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) > SEARCH_DIST + 10:
         lost_target = True
         time_since_turn = time.time()
 
@@ -192,32 +194,32 @@ def proc_lost_target():
     global lost_target
     global enemy_likes_to_go
     global is_searching
-    if(enemy_likes_to_go==1):
-        if(time.time() - time_since_turn) < 1:
+    if(enemy_likes_to_go == 1):
+        if(time.time() - time_since_turn) < .5:
             tank_drive(75, -75)
-            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) < SEARCH_DIST:
                 lost_target = False
                 enemy_likes_to_go = 1
-        elif(time.time() - time_since_turn) < 3:
+        elif(time.time() - time_since_turn) < 1.5:
             tank_drive(-75, 75)
-            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) < SEARCH_DIST:
                 lost_target = False
-                enemy_likes_to_go=-1
+                enemy_likes_to_go = -1
         else:
             lost_target = False
             enemy_likes_to_go = 0
             is_searching = True
-    elif(enemy_likes_to_go==-1):
+    elif(enemy_likes_to_go == -1):
         if(time.time() - time_since_turn) < 1:
             tank_drive(-75, 75)
-            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) < SEARCH_DIST:
                 lost_target = False
                 enemy_likes_to_go = -1
         elif(time.time() - time_since_turn) < 3:
             tank_drive(75, -75)
-            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) < SEARCH_DIST:
                 lost_target = False
-                enemy_likes_to_go=1
+                enemy_likes_to_go = 1
         else:
             lost_target = False
             enemy_likes_to_go = 0
@@ -225,14 +227,14 @@ def proc_lost_target():
     else:
         if(time.time() - time_since_turn) < 1:
             tank_drive(75, -75)
-            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) < SEARCH_DIST:
                 lost_target = False
                 enemy_likes_to_go = 1
         elif(time.time() - time_since_turn) < 3:
             tank_drive(-75, 75)
-            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) <30:
+            if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) < SEARCH_DIST:
                 lost_target = False
-                enemy_likes_to_go=-1
+                enemy_likes_to_go = -1
         else:
             lost_target = False
             enemy_likes_to_go = 0
