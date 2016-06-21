@@ -79,13 +79,38 @@ is_esc_line = False
 is_searching = True
 lost_target = False
 enemy_likes_to_go = 0  # 0 is center, 1 is right, -1 is left
+start_direction = 0  # 0 is undefined, 1 is right, -1 is left
 
+
+def wait_for_press():
+    global start_direction
+
+    buf = array.array('B', [0] * BUF_LEN)
+    with open('/dev/input/by-path/platform-gpio-keys.0-event', 'r') as fd:
+        ret = fcntl.ioctl(fd, EVIOCGKEY(len(buf)), buf)
+
+    if ret < 0:
+        print("ioctl error", ret)
+        sys.exit(1)
+
+    # for key in ['UP', 'DOWN', 'LEFT', 'RIGHT', 'ENTER', 'BACKSPACE']:
+    #    key_code = globals()['KEY_' + key]
+    #    key_state = test_bit(key_code, buf) and "pressed" or "released"
+    #    print('%9s : %s' % (key, key_state))
+    if(test_bit(globals()['KEY_LEFT'], buf)):
+        return -1
+    if(test_bit(globals()['KEY_RIGHT'], buf)):
+        return 1
+    if(test_bit(globals()['KEY_ENTER'], buf)):
+        return 0
 
 print('ready')
 lights.trigger = 'timer'
 # input("Press enter to go!")
-while not is_enter_pressed():
-    pass
+while True:
+    if wait_for_press():
+        start_direction = wait_for_press()
+        break
 
 
 def go_forwards():
@@ -115,6 +140,13 @@ def turn_right():
     motor_b.run_forever(duty_cycle_sp=75)
     motor_c.run_forever(duty_cycle_sp=75)
     motor_d.run_forever(duty_cycle_sp=-75)
+
+
+def turn_left():
+    motor_a.run_forever(duty_cycle_sp=75)
+    motor_b.run_forever(duty_cycle_sp=-75)
+    motor_c.run_forever(duty_cycle_sp=-75)
+    motor_d.run_forever(duty_cycle_sp=75)
 
 
 def stop():
@@ -176,7 +208,7 @@ SEARCH_DIST = 50
 def proc_search():
     global is_searching
     turn_right()
-    if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals)) < SEARCH_DIST:
+    if (sonar_sensor.value() / math.pow(10, sonar_sensor.decimals))< SEARCH_DIST:
         is_searching = False
 signal.signal(signal.SIGINT, handler)
 
@@ -249,6 +281,16 @@ def proc_lost_target():
 
 
 def main():
+    if start_direction == -1:
+        turn_right()
+        time.sleep(.75)
+        go_forwards()
+        time.sleep(.5)
+    if start_direction == 1:
+        turn_left()
+        time.sleep(.75)
+        go_forwards()
+        time.sleep(.5)
     while(True):
         # print(is_enter_pressed())
         if is_esc_line is True:
