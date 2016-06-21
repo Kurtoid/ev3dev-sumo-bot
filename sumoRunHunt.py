@@ -111,10 +111,10 @@ def go_back():
 
 
 def turn_right():
-    motor_a.run_forever(duty_cycle_sp=75)
-    motor_b.run_forever(duty_cycle_sp=-75)
-    motor_c.run_forever(duty_cycle_sp=-75)
-    motor_d.run_forever(duty_cycle_sp=75)
+    motor_a.run_forever(duty_cycle_sp=-75)
+    motor_b.run_forever(duty_cycle_sp=75)
+    motor_c.run_forever(duty_cycle_sp=75)
+    motor_d.run_forever(duty_cycle_sp=-75)
 
 
 def stop():
