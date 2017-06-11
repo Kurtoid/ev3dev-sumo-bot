@@ -102,7 +102,7 @@ def wait_for_press():
     if(test_bit(globals()['KEY_RIGHT'], buf)):
         return 1
     if(test_bit(globals()['KEY_ENTER'], buf)):
-        return 0
+        return -2
 
 print('ready')
 lights.trigger = 'timer'
